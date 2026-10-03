@@ -648,28 +648,30 @@ static char *die_name(const RzBinDwarfDie *die, DwContext *ctx) {
 }
 
 static RzPVector /*<RzBinDwarfDie *>*/ *die_children(const RzBinDwarfDie *die, RzBinDWARF *dw) {
+	RzBinDwarfCompUnit *unit = ht_up_find(dw->info->unit_by_offset, die->unit_offset, NULL);
+	if (!unit) {
+		return NULL;
+	}
+
 	RzPVector /*<RzBinDwarfDie *>*/ *vec = rz_pvector_new(NULL);
 	if (!vec) {
 		return NULL;
 	}
-	RzBinDwarfCompUnit *unit = ht_up_find(dw->info->unit_by_offset, die->unit_offset, NULL);
-	if (!unit) {
-		goto err;
+	size_t remaining = rz_vector_len(&unit->dies) - (die->index + 1);
+	if (remaining > 0) {
+		rz_pvector_reserve(vec, RZ_MIN(remaining, (size_t)32));
 	}
 
 	for (size_t i = die->index + 1; i < rz_vector_len(&unit->dies); ++i) {
 		RzBinDwarfDie *child_die = rz_vector_index_ptr(&unit->dies, i);
 		if (child_die->depth >= die->depth + 1) {
 			rz_pvector_push(vec, child_die);
-		} else if (child_die->depth == die->depth) {
+		} else if (child_die->depth <= die->depth) {
 			break;
 		}
 	}
 
 	return vec;
-err:
-	rz_pvector_free(vec);
-	return NULL;
 }
 
 /**
@@ -813,17 +815,18 @@ err:
  * \brief Parse and return the count of an array or 0 if not found/not defined
  */
 static ut64 array_count_parse(DwContext *ctx, RzBinDwarfDie *die) {
-	if (!die->has_children) {
+	if (!die->has_children || !ctx->dw || !ctx->dw->info) {
 		return 0;
 	}
-	RzPVector *children = die_children(die, ctx->dw);
-	if (!children) {
+	RzBinDwarfCompUnit *unit = ht_up_find(ctx->dw->info->unit_by_offset, die->unit_offset, NULL);
+	if (!unit) {
 		return 0;
 	}
-
-	void **it;
-	rz_pvector_foreach (children, it) {
-		RzBinDwarfDie *child_die = *it;
+	for (size_t i = die->index + 1; i < rz_vector_len(&unit->dies); ++i) {
+		RzBinDwarfDie *child_die = rz_vector_index_ptr(&unit->dies, i);
+		if (child_die->depth <= die->depth) {
+			break;
+		}
 		if (child_die->tag != DW_TAG_subrange_type) {
 			continue;
 		}
@@ -832,14 +835,12 @@ static ut64 array_count_parse(DwContext *ctx, RzBinDwarfDie *die) {
 			switch (attr->at) {
 			case DW_AT_upper_bound:
 			case DW_AT_count:
-				rz_pvector_free(children);
 				return rz_bin_dwarf_attr_udata(attr) + 1;
 			default:
 				break;
 			}
 		}
 	}
-	rz_pvector_free(children);
 	return 0;
 }
 
