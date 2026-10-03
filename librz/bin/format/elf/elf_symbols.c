@@ -261,6 +261,10 @@ static bool compute_symbols_from_segment(ELFOBJ *bin, RzVector /*<RzBinElfSymbol
 
 	ut64 offset = segment->offset + segment->entry_size;
 
+	if (segment->number > 1) {
+		rz_vector_reserve(result, rz_vector_len(result) + segment->number - 1);
+	}
+
 	for (size_t i = 1; i < segment->number; i++) {
 		Elf_(Sym) entry;
 		if (!get_symbol_entry(bin, offset, &entry)) {

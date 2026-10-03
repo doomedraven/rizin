@@ -978,6 +978,12 @@ static RzPVector /*<RzBinSymbol *>*/ *symbols_obj(void *elf_obj) {
 		return NULL;
 	}
 
+	size_t sym_count = bin->symbols ? rz_vector_len(bin->symbols) : 0;
+	size_t imp_count = bin->imports ? rz_vector_len(bin->imports) : 0;
+	if (sym_count + imp_count > 0) {
+		rz_pvector_reserve(ret, sym_count + imp_count);
+	}
+
 	RzBinElfSymbol *symbol;
 	rz_bin_elf_foreach_symbols(bin, symbol) {
 		RzBinSymbol *tmp = Elf_(rz_bin_elf_convert_symbol)(bin, symbol);
@@ -1026,6 +1032,10 @@ static RzPVector /*<RzBinImport *>*/ *imports(RzBinFile *bf) {
 		return NULL;
 	}
 
+	if (bin->imports && rz_vector_len(bin->imports) > 0) {
+		rz_pvector_reserve(result, rz_vector_len(bin->imports));
+	}
+
 	RzBinElfSymbol *import;
 	rz_bin_elf_foreach_imports(bin, import) {
 		RzBinImport *tmp = Elf_(rz_bin_elf_convert_import)(import);
@@ -1053,6 +1063,10 @@ static RzPVector /*<RzBinReloc *>*/ *relocs_obj(ELFOBJ *obj, ut64 baddr, RzBuffe
 
 	if (!(ret = rz_pvector_new((RzPVectorFree)rz_bin_reloc_free))) {
 		return NULL;
+	}
+
+	if (obj->relocs && rz_vector_len(obj->relocs) > 0) {
+		rz_pvector_reserve(ret, rz_vector_len(obj->relocs));
 	}
 
 	ut64 got_addr = get_got_addr(obj);

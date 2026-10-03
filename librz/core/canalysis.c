@@ -6081,11 +6081,11 @@ static void _analysis_calls(RzCore *core, ut64 addr, ut64 addr_end, bool imports
 		}
 		if (!bufi) {
 			(void)rz_io_read_at_mapped(core->io, addr, buf, bsz);
-		}
-		if (!memcmp(buf, block0, bsz) || !memcmp(buf, block1, bsz)) {
-			// eprintf ("Error: skipping uninitialized block \n");
-			addr += bsz;
-			continue;
+			if (!memcmp(buf, block0, bsz) || !memcmp(buf, block1, bsz)) {
+				// eprintf ("Error: skipping uninitialized block \n");
+				addr += bsz;
+				continue;
+			}
 		}
 		RzAnalysisHint *hint = rz_analysis_hint_get(core->analysis, addr);
 		if (hint && hint->bits) {
