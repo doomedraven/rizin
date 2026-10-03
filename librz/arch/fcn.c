@@ -1813,24 +1813,11 @@ RZ_API int rz_analysis_fcn_del(RzAnalysis *a, ut64 addr) {
 }
 
 RZ_DEPRECATE RZ_API RzAnalysisFunction *rz_analysis_get_fcn_in(RzAnalysis *analysis, ut64 addr, int type) {
-	RzList *list = rz_analysis_get_functions_in(analysis, addr);
-	RzAnalysisFunction *ret = NULL;
-	if (list && !rz_list_empty(list)) {
-		if (type == RZ_ANALYSIS_FCN_TYPE_ROOT) {
-			RzAnalysisFunction *fcn;
-			RzListIter *iter;
-			rz_list_foreach (list, iter, fcn) {
-				if (fcn->addr == addr) {
-					ret = fcn;
-					break;
-				}
-			}
-		} else {
-			ret = rz_list_first_val(list);
-		}
+	rz_return_val_if_fail(analysis, NULL);
+	if (type == RZ_ANALYSIS_FCN_TYPE_ROOT) {
+		return rz_analysis_get_function_at(analysis, addr);
 	}
-	rz_list_free(list);
-	return ret;
+	return rz_analysis_first_function_in(analysis, addr);
 }
 
 RZ_DEPRECATE RZ_API RzAnalysisFunction *rz_analysis_get_fcn_in_bounds(RzAnalysis *analysis, ut64 addr, int type) {
