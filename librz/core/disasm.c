@@ -2318,6 +2318,20 @@ static inline bool is_flag_overlapped(RzFlagItem *flag, RzAnalysisFunction *f) {
 	return f->addr == flag->offset && name_overlapped;
 }
 
+typedef struct {
+	ut64 switch_addr;
+	RzAnalysisBlock *switch_block;
+} FindSwitchBlockCtx;
+
+static bool find_switch_block_cb(RzAnalysisBlock *block, void *user) {
+	FindSwitchBlockCtx *ctx = user;
+	if (block->switch_op && block->switch_op->addr == ctx->switch_addr) {
+		ctx->switch_block = block;
+		return false;
+	}
+	return true;
+}
+
 #define printPre (outline || !*comma)
 static void ds_show_flags(RzDisasmState *ds, bool overlapped) {
 	// const char *beginch;
@@ -2427,20 +2441,12 @@ static void ds_show_flags(RzDisasmState *ds, bool overlapped) {
 				}
 				if (!switch_block || switch_block->switch_op->addr != switch_addr) {
 					switch_enum_name = NULL;
-					switch_block = NULL;
-					RzList *blocks = rz_analysis_get_blocks_in(core->analysis, switch_addr);
-					RzListIter *it;
-					RzAnalysisBlock *block;
-					rz_list_foreach (blocks, it, block) {
-						if (block->switch_op && block->switch_op->addr == switch_addr) {
-							switch_block = block;
-							if (block->switch_op->enum_type) {
-								switch_enum_name = rz_type_identifier(block->switch_op->enum_type);
-							}
-							break;
-						}
+					FindSwitchBlockCtx ctx = { switch_addr, NULL };
+					rz_analysis_blocks_foreach_in(core->analysis, switch_addr, find_switch_block_cb, &ctx);
+					switch_block = ctx.switch_block;
+					if (switch_block && switch_block->switch_op->enum_type) {
+						switch_enum_name = rz_type_identifier(switch_block->switch_op->enum_type);
 					}
-					rz_list_free(blocks);
 				}
 				if (!strncmp(flag->name + 5, "default", 7)) {
 					rz_cons_printf(FLAG_PREFIX "default:"); // %s:", flag->name);

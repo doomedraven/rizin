@@ -40,7 +40,7 @@ RZ_API void rz_analysis_block_ref(RzAnalysisBlock *bb) {
 	bb->ref++;
 }
 
-#define DFLT_NINSTR 3
+#define DFLT_NINSTR 8
 
 static RzAnalysisBlock *block_new(RzAnalysis *a, ut64 addr, ut64 size) {
 	RzAnalysisBlock *block = RZ_NEW0(RzAnalysisBlock);
@@ -689,16 +689,21 @@ RZ_API bool rz_analysis_block_was_modified(RzAnalysisBlock *block) {
 	if (!block->analysis->iob.read_at) {
 		return false;
 	}
-	ut8 *buf = malloc(block->size);
+	ut8 stack_buf[512];
+	ut8 *buf = block->size <= sizeof(stack_buf) ? stack_buf : malloc(block->size);
 	if (!buf) {
 		return false;
 	}
 	if (!block->analysis->iob.read_at(block->analysis->iob.io, block->addr, buf, block->size)) {
-		free(buf);
+		if (buf != stack_buf) {
+			free(buf);
+		}
 		return false;
 	}
 	ut32 cur_hash = rz_hash_xxhash(buf, block->size);
-	free(buf);
+	if (buf != stack_buf) {
+		free(buf);
+	}
 	return block->bbhash != cur_hash;
 }
 
@@ -707,16 +712,21 @@ RZ_API void rz_analysis_block_update_hash(RzAnalysisBlock *block) {
 	if (!block->analysis->iob.read_at) {
 		return;
 	}
-	ut8 *buf = malloc(block->size);
+	ut8 stack_buf[512];
+	ut8 *buf = block->size <= sizeof(stack_buf) ? stack_buf : malloc(block->size);
 	if (!buf) {
 		return;
 	}
 	if (!block->analysis->iob.read_at(block->analysis->iob.io, block->addr, buf, block->size)) {
-		free(buf);
+		if (buf != stack_buf) {
+			free(buf);
+		}
 		return;
 	}
 	block->bbhash = rz_hash_xxhash(buf, block->size);
-	free(buf);
+	if (buf != stack_buf) {
+		free(buf);
+	}
 }
 
 typedef struct {
@@ -1217,12 +1227,15 @@ RZ_API void rz_analysis_block_analyze_ops(RzAnalysisBlock *block) {
 	if (block->addr + block->size <= block->addr) {
 		return;
 	}
-	ut8 *buf = malloc(block->size);
+	ut8 stack_buf[512];
+	ut8 *buf = block->size <= sizeof(stack_buf) ? stack_buf : malloc(block->size);
 	if (!buf) {
 		return;
 	}
 	if (!a->iob.read_at(a->iob.io, block->addr, buf, block->size)) {
-		free(buf);
+		if (buf != stack_buf) {
+			free(buf);
+		}
 		return;
 	}
 	// Try to start at the known sp_entry, or fallback to 0 to at least get relative deltas right
@@ -1254,5 +1267,7 @@ RZ_API void rz_analysis_block_analyze_ops(RzAnalysisBlock *block) {
 		addr += op.size > 0 ? op.size : 1;
 		rz_analysis_op_fini(&op);
 	}
-	free(buf);
+	if (buf != stack_buf) {
+		free(buf);
+	}
 }

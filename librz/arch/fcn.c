@@ -659,8 +659,8 @@ static RzAnalysisBBEndCause run_basic_block_analysis(RzAnalysisTaskItem *item, R
 	ut64 len = RZ_MIN(analysis->opt.bb_max_size, RZ_ANALYSIS_BLOCK_MAX_SIZE);
 	ReadAhead read_ahead_cache = { 0 };
 	const int continue_after_jump = analysis->opt.afterjmp;
-	char *last_reg_mov_lea_name = NULL;
-	char *movbasereg = NULL;
+	char last_reg_mov_lea_name[32] = { 0 };
+	char movbasereg[32] = { 0 };
 	RzAnalysisBlock *bb = item->block;
 	RzAnalysisBlock *bbg = NULL;
 	RzAnalysisBBEndCause ret = RZ_ANALYSIS_RET_END, skip_ret = 0;
@@ -795,8 +795,7 @@ static RzAnalysisBBEndCause run_basic_block_analysis(RzAnalysisTaskItem *item, R
 		ut32 at_delta;
 		ut64 at;
 		if (!last_is_reg_mov_lea) {
-			free(last_reg_mov_lea_name);
-			last_reg_mov_lea_name = NULL;
+			last_reg_mov_lea_name[0] = '\0';
 		}
 		if (rz_analysis_has_valid_limits(analysis) && rz_itv_end(analysis->limit) <= addr + idx) {
 			break;
@@ -1008,21 +1007,18 @@ static RzAnalysisBBEndCause run_basic_block_analysis(RzAnalysisTaskItem *item, R
 			}
 			// Is this a mov of immediate value into a register?
 			if (op.dst && op.dst->reg && op.dst->reg->name && op.val > 0 && op.val != UT64_MAX) {
-				free(last_reg_mov_lea_name);
-				if ((last_reg_mov_lea_name = rz_str_dup(op.dst->reg->name))) {
-					last_reg_mov_lea_val = op.val;
-					last_is_reg_mov_lea = true;
-				}
+				rz_str_ncpy(last_reg_mov_lea_name, op.dst->reg->name, sizeof(last_reg_mov_lea_name));
+				last_reg_mov_lea_val = op.val;
+				last_is_reg_mov_lea = true;
 			}
 			// skip mov reg, reg
 			if (analysis->opt.jmptbl && op.scale && op.ireg) {
 				movdisp = op.disp;
 				movscale = op.scale;
-				if (op.src[0] && op.src[0]->reg) {
-					free(movbasereg);
-					movbasereg = rz_str_dup(op.src[0]->reg->name);
+				if (op.src[0] && op.src[0]->reg && op.src[0]->reg->name) {
+					rz_str_ncpy(movbasereg, op.src[0]->reg->name, sizeof(movbasereg));
 				} else {
-					RZ_FREE(movbasereg);
+					movbasereg[0] = '\0';
 				}
 			}
 			if (analysis->opt.hpskip && regs_exist(op.src[0], op.dst) && !strcmp(op.src[0]->reg->name, op.dst->reg->name)) {
@@ -1058,11 +1054,9 @@ static RzAnalysisBBEndCause run_basic_block_analysis(RzAnalysisTaskItem *item, R
 				fcn->bp_off = -sp - op.src[0]->delta;
 			}
 			if (op.dst && op.dst->reg && op.dst->reg->name && op.ptr > 0 && op.ptr != UT64_MAX) {
-				free(last_reg_mov_lea_name);
-				if ((last_reg_mov_lea_name = rz_str_dup(op.dst->reg->name))) {
-					last_reg_mov_lea_val = op.ptr;
-					last_is_reg_mov_lea = true;
-				}
+				rz_str_ncpy(last_reg_mov_lea_name, op.dst->reg->name, sizeof(last_reg_mov_lea_name));
+				last_reg_mov_lea_val = op.ptr;
+				last_is_reg_mov_lea = true;
 			}
 			// skip lea reg,[reg]
 			if (analysis->opt.hpskip && regs_exist(op.src[0], op.dst) && !strcmp(op.src[0]->reg->name, op.dst->reg->name)) {
@@ -1450,7 +1444,7 @@ static RzAnalysisBBEndCause run_basic_block_analysis(RzAnalysisTaskItem *item, R
 					RzListIter *iter;
 					AnalysisLeAddrPair *pair;
 					params.jmptbl_off = 0;
-					if (movbasereg) {
+					if (*movbasereg) {
 						// find nearest candidate leaddr before op.addr
 						rz_list_foreach_prev(analysis->leaddrs, iter, pair) {
 							if (pair->op_addr >= op.addr) {
@@ -1590,7 +1584,6 @@ static RzAnalysisBBEndCause run_basic_block_analysis(RzAnalysisTaskItem *item, R
 	}
 beach:
 	rz_analysis_op_fini(&op);
-	RZ_FREE(last_reg_mov_lea_name);
 	if (bb) {
 		if (bb->size) {
 			rz_analysis_block_update_hash(bb);
@@ -1599,7 +1592,6 @@ beach:
 		}
 		rz_analysis_block_unref(bb);
 	}
-	free(movbasereg);
 	return ret;
 }
 

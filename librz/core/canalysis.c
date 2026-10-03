@@ -3511,25 +3511,25 @@ RZ_IPI char *rz_core_analysis_function_signature(RzCore *core, RzOutputMode mode
 	return signature;
 }
 
-static RzAnalysisBlock *find_block_at_xref_addr(RzCore *core, ut64 addr) {
-	RzList *blocks = rz_analysis_get_blocks_in(core->analysis, addr);
-	if (!blocks) {
-		return NULL;
-	}
-	RzAnalysisBlock *block = NULL;
-	RzListIter *bit;
-	RzAnalysisBlock *block_cur;
-	rz_list_foreach (blocks, bit, block_cur) {
-		if (rz_analysis_block_op_starts_at(block_cur, addr)) {
-			block = block_cur;
-			break;
-		}
-	}
-	if (block) {
+typedef struct {
+	ut64 addr;
+	RzAnalysisBlock *block;
+} FindBlockAtXrefAddrCtx;
+
+static bool find_block_at_xref_addr_cb(RzAnalysisBlock *block, void *user) {
+	FindBlockAtXrefAddrCtx *ctx = user;
+	if (rz_analysis_block_op_starts_at(block, ctx->addr)) {
+		ctx->block = block;
 		rz_analysis_block_ref(block);
+		return false;
 	}
-	rz_list_free(blocks);
-	return block;
+	return true;
+}
+
+static RzAnalysisBlock *find_block_at_xref_addr(RzCore *core, ut64 addr) {
+	FindBlockAtXrefAddrCtx ctx = { addr, NULL };
+	rz_analysis_blocks_foreach_in(core->analysis, addr, find_block_at_xref_addr_cb, &ctx);
+	return ctx.block;
 }
 
 static void relocation_function_process_noreturn(RzCore *core, RzAnalysisBlock *b, RzSetU *todo, ut64 opsize, ut64 reladdr, ut64 addr) {
