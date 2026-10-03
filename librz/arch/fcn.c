@@ -365,53 +365,65 @@ static bool analysis_le_addr_pair_add(RZ_NONNULL RzAnalysis *analysis, ut64 op_a
 	return false;
 }
 
-static RzAnalysisBlock *bbget(RzAnalysis *analysis, ut64 addr, bool jumpmid) {
-	RzList *intersecting = rz_analysis_get_blocks_in(analysis, addr);
-	RzListIter *iter;
-	RzAnalysisBlock *bb;
+typedef struct {
+	RzAnalysis *analysis;
+	ut64 addr;
+	bool jumpmid;
+	RzAnalysisBlock *ret;
+} BBGetCtx;
 
-	RzAnalysisBlock *ret = NULL;
-	rz_list_foreach (intersecting, iter, bb) {
-		ut64 eaddr = bb->addr + bb->size;
-		if (((bb->addr >= eaddr && addr == bb->addr) ||
-			    rz_analysis_block_contains(bb, addr)) &&
-			(!jumpmid || rz_analysis_block_op_starts_at(bb, addr))) {
-			if (analysis->opt.delay) {
-				ut8 *buf = malloc(bb->size);
-				if (analysis->iob.read_at(analysis->iob.io, bb->addr, buf, bb->size)) {
-					const int last_instr_idx = bb->ninstr - 1;
-					bool in_delay_slot = false;
-					RzAnalysisOp op = { 0 };
-					for (int i = last_instr_idx; i >= 0; i--) {
-						const ut64 off = rz_analysis_block_get_op_offset(bb, i);
-						const ut64 at = bb->addr + off;
-						if (addr <= at || off >= bb->size) {
-							continue;
-						}
-						rz_analysis_op_init(&op);
-						int size = rz_analysis_op(analysis, &op, at, buf + off, bb->size - off, RZ_ANALYSIS_OP_MASK_BASIC);
-						if (size > 0 && op.delay) {
-							if (op.delay >= last_instr_idx - i) {
-								in_delay_slot = true;
-							}
-							rz_analysis_op_fini(&op);
-							break;
-						}
-						rz_analysis_op_fini(&op);
-					}
-					if (in_delay_slot) {
-						free(buf);
+static bool bbget_cb(RzAnalysisBlock *bb, void *user) {
+	BBGetCtx *ctx = user;
+	ut64 eaddr = bb->addr + bb->size;
+	ut64 addr = ctx->addr;
+	if (((bb->addr >= eaddr && addr == bb->addr) ||
+		    rz_analysis_block_contains(bb, addr)) &&
+		(!ctx->jumpmid || rz_analysis_block_op_starts_at(bb, addr))) {
+		if (ctx->analysis->opt.delay) {
+			ut8 *buf = malloc(bb->size);
+			if (ctx->analysis->iob.read_at(ctx->analysis->iob.io, bb->addr, buf, bb->size)) {
+				const int last_instr_idx = bb->ninstr - 1;
+				bool in_delay_slot = false;
+				RzAnalysisOp op = { 0 };
+				for (int i = last_instr_idx; i >= 0; i--) {
+					const ut64 off = rz_analysis_block_get_op_offset(bb, i);
+					const ut64 at = bb->addr + off;
+					if (addr <= at || off >= bb->size) {
 						continue;
 					}
+					rz_analysis_op_init(&op);
+					int size = rz_analysis_op(ctx->analysis, &op, at, buf + off, bb->size - off, RZ_ANALYSIS_OP_MASK_BASIC);
+					if (size > 0 && op.delay) {
+						if (op.delay >= last_instr_idx - i) {
+							in_delay_slot = true;
+						}
+						rz_analysis_op_fini(&op);
+						break;
+					}
+					rz_analysis_op_fini(&op);
 				}
-				free(buf);
+				if (in_delay_slot) {
+					free(buf);
+					return true;
+				}
 			}
-			ret = bb;
-			break;
+			free(buf);
 		}
+		ctx->ret = bb;
+		return false;
 	}
-	rz_list_free(intersecting);
-	return ret;
+	return true;
+}
+
+static RzAnalysisBlock *bbget(RzAnalysis *analysis, ut64 addr, bool jumpmid) {
+	BBGetCtx ctx = {
+		.analysis = analysis,
+		.addr = addr,
+		.jumpmid = jumpmid,
+		.ret = NULL,
+	};
+	rz_analysis_blocks_foreach_in(analysis, addr, bbget_cb, &ctx);
+	return ctx.ret;
 }
 
 typedef struct {

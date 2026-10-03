@@ -522,6 +522,13 @@ static void hint_merge(RzAnalysisHint *hint, RzAnalysisAddrHintRecord *record) {
 }
 
 RZ_API RzAnalysisHint *rz_analysis_hint_get(RzAnalysis *a, ut64 addr) {
+	const RzVector *records = rz_analysis_addr_hints_at(a, addr);
+	const char *arch = rz_analysis_hint_arch_at(a, addr, NULL);
+	int bits = rz_analysis_hint_bits_at(a, addr, NULL);
+	if ((!records || rz_vector_empty(records)) && !arch && !bits) {
+		return NULL;
+	}
+
 	RzAnalysisHint *hint = RZ_NEW0(RzAnalysisHint);
 	if (!hint) {
 		return NULL;
@@ -532,20 +539,13 @@ RZ_API RzAnalysisHint *rz_analysis_hint_get(RzAnalysis *a, ut64 addr) {
 	hint->ret = UT64_MAX;
 	hint->val = UT64_MAX;
 	hint->stackframe = UT64_MAX;
-	const RzVector *records = rz_analysis_addr_hints_at(a, addr);
 	if (records) {
 		RzAnalysisAddrHintRecord *record;
 		rz_vector_foreach (records, record) {
 			hint_merge(hint, record);
 		}
 	}
-	const char *arch = rz_analysis_hint_arch_at(a, addr, NULL);
 	hint->arch = rz_str_dup(arch);
-	hint->bits = rz_analysis_hint_bits_at(a, addr, NULL);
-	if ((!records || rz_vector_empty(records)) && !hint->arch && !hint->bits) {
-		// no hints found
-		free(hint);
-		return NULL;
-	}
+	hint->bits = bits;
 	return hint;
 }
