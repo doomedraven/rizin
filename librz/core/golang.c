@@ -642,6 +642,9 @@ static void analyse_golang_symbols(RzCore *core) {
 	}
 
 	const char *detected_cc = golang_detect_cc(core, symbols);
+	if (detected_cc && !rz_analysis_cc_exist(core->analysis, detected_cc)) {
+		detected_cc = NULL;
+	}
 	RzStrConstPool *cpool = rz_analysis_get_const_pool(core->analysis);
 	GolangAnalyseCtx actx = {
 		.core = core,
