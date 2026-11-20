@@ -9726,3 +9726,14 @@ WARNING: DWARF expression in unit 0x0 yields no location, it is invalid or unsup
 WARNING: DWARF expression in unit 0x0 yields no location, it is invalid or unsupported
 EOF
 RUN
+
+NAME=Split DWARF fallback when dwo has no DWARF sections
+FILE=bins/elf/dwarf3_c.elf
+ARGS=-e bin.dbginfo.dwo_path=bins/elf/dwarf/arm-thumb-stripped.elf
+CMDS=<<EOF
+i~format
+EOF
+EXPECT=<<EOF
+format   elf64
+EOF
+RUN
