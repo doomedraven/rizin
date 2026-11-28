@@ -604,14 +604,26 @@ RZ_API RZ_BORROW RzPVector /*<RzBinTrycatch *>*/ *rz_bin_file_get_trycatch(RZ_NO
 	}
 	return bf->o->trycatch;
 }
+
+static int cmp_function_range(const void *a, const void *b, void *user) {
+	(void)user;
+	const RzBinFunctionRange *fa = a;
+	const RzBinFunctionRange *fb = b;
+	if (fa->start != fb->start) {
+		return RZ_NUM_CMP(fa->start, fb->start);
+	}
+	return RZ_NUM_CMP(fb->end, fa->end);
+}
+
 /**
  * \brief Get the function ranges information from the given binary file.
  *
  * If the function ranges have not been parsed yet, it will call the plugin's
- * function_ranges method to load them. If that fails then an empty vector will be returned.
+ * function_ranges method to load them and sort the result by ascending start address.
+ * If that fails then an empty vector will be returned.
  *
  * \param bf Binary file
- * \return Borrowed vector of RzBinFunctionRange pointers
+ * \return Borrowed vector of RzBinFunctionRange pointers sorted by ascending start address
  */
 RZ_API RZ_BORROW RzPVector /*<RzBinFunctionRange *>*/ *rz_bin_file_get_function_ranges(RZ_NONNULL RzBinFile *bf) {
 	rz_return_val_if_fail(bf && bf->o, NULL);
@@ -621,6 +633,8 @@ RZ_API RZ_BORROW RzPVector /*<RzBinFunctionRange *>*/ *rz_bin_file_get_function_
 		}
 		if (!bf->o->function_ranges) {
 			bf->o->function_ranges = rz_pvector_new((RzPVectorFree)rz_bin_function_range_free);
+		} else if (rz_pvector_len(bf->o->function_ranges) > 1) {
+			rz_pvector_sort(bf->o->function_ranges, cmp_function_range, NULL);
 		}
 	}
 	return bf->o->function_ranges;

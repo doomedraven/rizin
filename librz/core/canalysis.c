@@ -805,6 +805,44 @@ static bool is_entry_flag(RzFlagItem *f) {
 	return f->space && !strcmp(f->space->name, RZ_FLAGS_FS_SYMBOLS) && rz_str_startswith(f->name, "entry.");
 }
 
+static int cmp_addr_to_function_range(ut64 addr, const RzBinFunctionRange *fr) {
+	return RZ_NUM_CMP(addr, fr->start);
+}
+
+static ut64 find_function_range_end(RzCore *core, ut64 at) {
+	RzBinFile *bf = core->bin ? core->bin->cur : NULL;
+	RzBinObject *o = bf ? bf->o : NULL;
+	if (!o || at == UT64_MAX) {
+		return UT64_MAX;
+	}
+	const RzPVector /*<RzBinFunctionRange *>*/ *franges = rz_bin_file_get_function_ranges(bf);
+	if (!franges || rz_pvector_empty(franges)) {
+		return UT64_MAX;
+	}
+	ut64 target_va = at;
+	if (!core->io->va) {
+		ut64 p2v = rz_bin_object_p2v(o, at);
+		if (p2v == UT64_MAX) {
+			return UT64_MAX;
+		}
+		target_va = rz_bin_object_addr_with_base(o, p2v);
+	}
+	size_t idx = 0;
+	rz_pvector_lower_bound(franges, target_va, idx, cmp_addr_to_function_range);
+	if (idx >= rz_pvector_len(franges)) {
+		return UT64_MAX;
+	}
+	const RzBinFunctionRange *fr = rz_pvector_at(franges, idx);
+	if (!fr || fr->start != target_va || fr->end == UT64_MAX || fr->end <= fr->start) {
+		return UT64_MAX;
+	}
+	ut64 size = fr->end - fr->start;
+	if (UT64_ADD_OVFCHK(at, size)) {
+		return UT64_MAX;
+	}
+	return at + size;
+}
+
 static int core_analysis_fcn(RzCore *core, ut64 at, ut64 from, int reftype, int depth) {
 	if (depth < 0) {
 		return false;
@@ -846,6 +884,7 @@ static int core_analysis_fcn(RzCore *core, ut64 at, ut64 from, int reftype, int 
 	if (!fcn->name) {
 		fcn->name = rz_str_newf("%s.%08" PFMT64x, fcnpfx, at);
 	}
+	ut64 fr_end = find_function_range_end(core, at);
 	do {
 		RzFlagItem *f;
 		ut64 delta = rz_analysis_function_linear_size(fcn);
@@ -855,7 +894,32 @@ static int core_analysis_fcn(RzCore *core, ut64 at, ut64 from, int reftype, int 
 		if (rz_interrupt_is_breaked(core->intr)) {
 			break;
 		}
+		bool clamped_limits = false;
+		bool had_limits = false;
+		ut64 prev_from = UT64_MAX, prev_to = UT64_MAX;
+		if (fr_end != UT64_MAX && at < fr_end) {
+			had_limits = rz_analysis_has_valid_limits(core->analysis);
+			if (had_limits) {
+				rz_analysis_get_limits(core->analysis, &prev_from, &prev_to);
+			}
+			if (!had_limits || (at >= prev_from && at < prev_to)) {
+				ut64 clamped_from = had_limits ? RZ_MAX(prev_from, at) : at;
+				ut64 clamped_to = had_limits ? RZ_MIN(prev_to, fr_end) : fr_end;
+				if (clamped_from < clamped_to &&
+					(!had_limits || clamped_from != prev_from || clamped_to != prev_to)) {
+					rz_analysis_set_limits(core->analysis, clamped_from, clamped_to);
+					clamped_limits = true;
+				}
+			}
+		}
 		fcnlen = rz_analysis_fcn(core->analysis, fcn, at + delta, aopt->bb_max_size, reftype);
+		if (clamped_limits) {
+			if (had_limits) {
+				rz_analysis_set_limits(core->analysis, prev_from, prev_to);
+			} else {
+				rz_analysis_unset_limits(core->analysis);
+			}
+		}
 		at = fcn->addr; // potentially shifted by nopskip
 		if (aopt->searchstringrefs) {
 			rz_analysis_set_stringrefs(core, fcn);
