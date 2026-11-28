@@ -52,6 +52,9 @@ RZ_API RZ_OWN char *rz_version_gittip(RZ_BORROW RZ_NONNULL RzPath *sys_path) {
 RZ_API RZ_OWN char *rz_version_str(RZ_BORROW RZ_NONNULL RzPath *sys_path, RZ_NULLABLE const char *program) {
 	rz_return_val_if_fail(sys_path, NULL);
 	RzStrBuf *sb = rz_strbuf_new(NULL);
+	if (!sb) {
+		return NULL;
+	}
 	if (program) {
 		rz_strbuf_appendf(sb, "%s ", program);
 	}
