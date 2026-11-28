@@ -39,6 +39,7 @@ RzBinPlugin rz_bin_plugin_elf = {
 	.size = &elf_size,
 	.libs = &elf_libs,
 	.relocs = &elf_relocs,
+	.function_ranges = &elf_function_ranges,
 	.create = &elf_create_elf,
 	.file_type = &elf_get_file_type,
 	.regstate = &elf_regstate,

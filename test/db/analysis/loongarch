@@ -94,7 +94,7 @@ fortify_source true
 |           0x00007538      pcalau12i ra, -3
 |           0x0000753c      addi.d t0, zero, aav.0x00000340
 |           0x00007540      lu32i.d t0, 0
-|           ; DATA XREF from fcn.00016abc @ 0x16abc
+|           ; DATA XREF from fcn.00016930 @ 0x16abc
 |           0x00007544      lu52i.d t0, t0, 0
 |           0x00007548      add.d ra, ra, t0
 |           0x0000754c      jirl  ra, ra, 0
@@ -103,13 +103,7 @@ fortify_source true
 |           0x00007558      lu32i.d t0, 0
 |           0x0000755c      lu52i.d t0, t0, 0
 |           0x00007560      add.d ra, ra, t0
-|           0x00007564      jirl  ra, ra, 0
-|           0x00007568      nop
-|           0x0000756c      nop
-|           0x00007570      nop
-|           0x00007574      nop
-|           0x00007578      nop
-\           0x0000757c      nop
+\           0x00007564      jirl  ra, ra, 0
             ; XREFS(70)
 / fcn.00010208();
 |           0x00010208      addi.d sp, sp, -0x70

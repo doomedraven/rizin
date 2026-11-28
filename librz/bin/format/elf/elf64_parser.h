@@ -31,6 +31,7 @@ RzPVector /*<RzBinField *>*/ *elf64_fields(RzBinFile *bf);
 ut64 elf64_size(RzBinFile *bf);
 RzPVector /*<char *>*/ *elf64_libs(RzBinFile *bf);
 RzPVector /*<RzBinReloc *>*/ *elf64_relocs(RzBinFile *bf);
+RzPVector /*<RzBinFunctionRange *>*/ *elf64_function_ranges(RzBinFile *bf);
 int elf64_get_file_type(RzBinFile *bf);
 char *elf64_regstate(RzBinFile *bf);
 void elf64_destroy(RzBinFile *bf);
