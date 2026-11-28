@@ -5668,6 +5668,7 @@ static RzCoreDecodedBytes *core_decoded_bytes_next(RzIterator *it) {
 	// input and output must be different for rz_parse_filter.
 	char *tmp = rz_str_dup(disasm);
 	rz_parse_filter(core->parser, ctx->current, core->flags, cdb->hint, tmp, disasm, sizeof(disasm), ctx->big_endian);
+	core->parser->subrel_addr = 0;
 	free(tmp);
 
 	// only this instruction's mask is kept, so only its bytes are masked: masking

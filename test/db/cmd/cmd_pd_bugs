@@ -612,3 +612,65 @@ EXPECT=<<EOF
 EOF
 EXPECT_ERR=
 RUN
+
+NAME=pdq honors asm.sub.rel and does not leak stale subrel_addr
+FILE=bins/elf/ls-cet
+CMDS=<<EOF
+e asm.bytes=false
+e asm.sub.rel=true
+pd 1 @ 0x4eb0 >/dev/null
+pdq 6 @ 0x4e98
+echo ---
+e asm.sub.rel=false
+pdq 6 @ 0x4e98
+echo ---
+e asm.sub.rel=true
+pd 1 @ 0x4eb0 >/dev/null
+e asm.sub.rel=false
+pdq 6 @ 0x4e98
+EOF
+EXPECT=<<EOF
+0x00004e98 xor eax, eax
+0x00004e9a call 0x13540
+0x00004e9f lea rsi, qword [0x000198c4]
+0x00004ea6 mov edi, 0x06
+0x00004eab call sym.imp.setlocale
+0x00004eb0 lea rsi, qword str.usr_share_locale
+---
+0x00004e98 xor eax, eax
+0x00004e9a call 0x13540
+0x00004e9f lea rsi, qword [rip+0x14a1e]
+0x00004ea6 mov edi, 0x06
+0x00004eab call sym.imp.setlocale
+0x00004eb0 lea rsi, qword [rip+0x14b58]
+---
+0x00004e98 xor eax, eax
+0x00004e9a call 0x13540
+0x00004e9f lea rsi, qword [rip+0x14a1e]
+0x00004ea6 mov edi, 0x06
+0x00004eab call sym.imp.setlocale
+0x00004eb0 lea rsi, qword [rip+0x14b58]
+EOF
+EXPECT_ERR=
+RUN
+
+NAME=pdq honors asm.sub.var inside analyzed functions
+FILE=bins/pe/ioli/w32/crackme0x00.exe
+CMDS=<<EOF
+e asm.bytes=false
+af @ main
+e asm.sub.var=true
+pdq 2 @ 0x0040132a
+echo ---
+e asm.sub.var=false
+pdq 2 @ 0x0040132a
+EOF
+EXPECT=<<EOF
+0x0040132a mov dword [var_20h], eax
+0x0040132d mov eax, dword [var_20h]
+---
+0x0040132a mov dword [ebp-0x1c], eax
+0x0040132d mov eax, dword [ebp-0x1c]
+EOF
+EXPECT_ERR=
+RUN

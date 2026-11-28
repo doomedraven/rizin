@@ -932,6 +932,9 @@ static void ds_free(RzDisasmState *ds) {
 			rz_io_fd_close(ds->core->io, ds->stackFd);
 		}
 	}
+	if (ds->core && ds->core->parser) {
+		ds->core->parser->subrel_addr = 0;
+	}
 	free(ds->window);
 	rz_asm_op_fini(&ds->asmop);
 	rz_analysis_op_fini(&ds->analysis_op);
@@ -6450,6 +6453,10 @@ RZ_API int rz_core_disasm_pdi_with_buf(RzCore *core, ut64 address, ut8 *buf, ut3
 	bool show_bytes = rz_config_get_b(core->config, "asm.bytes");
 	bool decode = rz_config_get_b(core->config, "asm.decode");
 	bool subnames = rz_config_get_b(core->config, "asm.sub.names");
+	bool subvar = rz_config_get_b(core->config, "asm.sub.var");
+	bool subrel = rz_config_get_b(core->config, "asm.sub.rel");
+	bool subreg = rz_config_get_b(core->config, "asm.sub.reg");
+	bool subvaronly = rz_config_get_b(core->config, "asm.sub.varonly");
 	int show_color = rz_config_get_i(core->config, "scr.color");
 	bool asm_ucase = rz_config_get_b(core->config, "asm.ucase");
 	bool asm_instr = rz_config_get_b(core->config, "asm.instr");
@@ -6643,12 +6650,46 @@ RZ_API int rz_core_disasm_pdi_with_buf(RzCore *core, ut64 address, ut8 *buf, ut3
 				rz_analysis_op_fini(&analysis_op);
 				rz_asm_op_fini(&asmop);
 			} else {
-				char opstr[128] = {
-					0
-				};
-				char *asm_str = rz_asm_op_get_asm(&asmop);
+				char opstr[512] = { 0 };
+				char strsub[512] = { 0 };
+				char *orig_asm = rz_asm_op_get_asm(&asmop);
+				char *asm_str = orig_asm;
 				if (asm_ucase) {
 					rz_str_case(asm_str, 1);
+				}
+				RzAnalysisOp aop = { 0 };
+				bool has_aop = false;
+				if (show_color || (subnames && subrel) || (subvar && !asm_immtrim)) {
+					rz_analysis_op_init(&aop);
+					rz_analysis_op(core->analysis, &aop, at,
+						buf + i, nb_bytes - i, RZ_ANALYSIS_OP_MASK_BASIC);
+					has_aop = true;
+				}
+				core->parser->subrel = subrel;
+				core->parser->subreg = subreg;
+				core->parser->localvar_only = subvaronly;
+				if (has_aop) {
+					rz_core_calc_subrel_addr(core, &aop);
+				} else {
+					core->parser->subrel_addr = 0;
+				}
+				if (subvar && !asm_immtrim) {
+					RzAnalysisFunction *f = rz_analysis_get_fcn_in(core->analysis, at, RZ_ANALYSIS_FCN_TYPE_NULL);
+					if (rz_parse_subvar(core->parser, f, &aop, asm_str, strsub, sizeof(strsub)) && *strsub) {
+						asm_str = strsub;
+					}
+					if (subrel) {
+						RzList *list = rz_analysis_xrefs_get_from(core->analysis, at);
+						RzListIter *iter;
+						RzAnalysisXRef *xref;
+						rz_list_foreach (list, iter, xref) {
+							if ((xref->type == RZ_ANALYSIS_XREF_TYPE_DATA || xref->type == RZ_ANALYSIS_XREF_TYPE_STRING) && aop.type == RZ_ANALYSIS_OP_TYPE_LEA) {
+								core->parser->subrel_addr = xref->to;
+								break;
+							}
+						}
+						rz_list_free(list);
+					}
 				}
 				if (asm_immtrim) {
 					rz_parse_immtrim(asm_str);
@@ -6658,25 +6699,26 @@ RZ_API int rz_core_disasm_pdi_with_buf(RzCore *core, ut64 address, ut8 *buf, ut3
 					rz_parse_filter(core->parser, at, core->flags, hint,
 						asm_str, opstr, sizeof(opstr) - 1, core->print->big_endian);
 					rz_analysis_hint_free(hint);
-					asm_str = (char *)&opstr;
+					asm_str = opstr;
 				}
+				core->parser->subrel_addr = 0;
 				if (show_color) {
-					RzAnalysisOp aop = { 0 };
-					rz_analysis_op_init(&aop);
-					rz_analysis_op(core->analysis, &aop, address + i,
-						buf + i, nb_bytes - i, RZ_ANALYSIS_OP_MASK_BASIC);
 					RzStrBuf *colored_asm, *bw_str = rz_strbuf_new(asm_str);
 					RzReg *rreg = rz_analysis_get_reg(core->analysis);
 					RzAsmParseParam *param = rz_asm_get_parse_param(rreg, aop.type);
-					colored_asm = rz_asm_colorize_asm_str(bw_str, core->print, param, asmop.asm_toks);
+					const RzAsmTokenString *toks = (!asm_ucase && !asm_immtrim && (asm_str == orig_asm || !strcmp(asm_str, orig_asm))) ? asmop.asm_toks : NULL;
+					colored_asm = rz_asm_colorize_asm_str(bw_str, core->print, param, toks);
+					rz_strbuf_free(bw_str);
 					rz_asm_parse_param_free(param);
 					rz_cons_printf(core->cons, "%s" Color_RESET "\n", colored_asm ? rz_strbuf_get(colored_asm) : "");
 					rz_strbuf_free(colored_asm);
-					rz_analysis_op_fini(&aop);
-					rz_asm_op_fini(&asmop);
 				} else {
 					rz_cons_println(core->cons, asm_str);
 				}
+				if (has_aop) {
+					rz_analysis_op_fini(&aop);
+				}
+				rz_asm_op_fini(&asmop);
 			}
 		}
 		i += ret;
@@ -6908,9 +6950,7 @@ RZ_API RZ_OWN char *rz_core_disasm_instruction(RzCore *core, ut64 addr, ut64 rel
 	core->parser->subrel = rz_config_get_i(core->config, "asm.sub.rel");
 	core->parser->localvar_only = rz_config_get_i(core->config, "asm.sub.varonly");
 
-	if (core->parser->subrel) {
-		core->parser->subrel_addr = reladdr;
-	}
+	core->parser->subrel_addr = core->parser->subrel ? reladdr : 0;
 	rz_io_read_at_mapped(core->io, addr, buf, size);
 	rz_asm_set_pc(core->rasm, addr);
 	// use core binding to set asm.bits correctly based on the addr
@@ -6932,6 +6972,7 @@ RZ_API RZ_OWN char *rz_core_disasm_instruction(RzCore *core, ut64 addr, ut64 rel
 	RzAnalysisHint *hint = rz_analysis_hint_get(core->analysis, addr);
 	rz_parse_filter(core->parser, addr, core->flags, hint,
 		ba, str, sizeof(str), core->print->big_endian);
+	core->parser->subrel_addr = 0;
 	rz_analysis_hint_free(hint);
 	rz_asm_op_set_asm(&asmop, ba);
 	free(ba);

@@ -58,7 +58,7 @@ EXPECT=<<EOF
 0x000101dc ldr pc, [ip, 0x118]!
 0x00010188   sym..plt:
 0x00010188 str lr, [sp, -4]!
-0x0001018c ldr lr, [pc, 4]
+0x0001018c ldr lr, [0x00010198]
 0x00010190 add lr, pc, lr
 0x00010194 ldr pc, [lr, 8]!
 EOF
