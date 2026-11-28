@@ -375,9 +375,10 @@ EXPECT=<<EOF
 0x0000e0ac  64ca ffff 28ca ffff c8ca ffff 0000 0000  d...(...........
 0x0000e0bc  0000 0000                                ....
 
-            0x00000810      ret
-            0x00000814      ldr   x8, [x0]
-            0x00000818      add   x9, x8, 1
+\           0x00000810      ret
+/ fcn.00000814(unsigned long arg1 @ x0, unsigned long arg2 @ x1, int64_t arg3 @ x2);
+|           0x00000814      ldr   x8, [x0]
+|           0x00000818      add   x9, x8, 1
 EOF
 RUN
 

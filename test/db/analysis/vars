@@ -1157,7 +1157,7 @@ name: sym.variable_expand_for_file
 size: 129
 is-pure: false
 realsz: 120
-stackframe: 0
+stackframe: 24
 call-convention: amd64
 cyclomatic-cost: 37
 cyclomatic-complexity: 3

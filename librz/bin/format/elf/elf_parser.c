@@ -174,6 +174,10 @@ RzPVector /*<RzBinReloc *>*/ *elf_relocs(RzBinFile *bf) {
 	return relocs(bf);
 }
 
+RzPVector /*<RzBinFunctionRange *>*/ *elf_function_ranges(RzBinFile *bf) {
+	return Elf_(rz_bin_elf_get_function_ranges)(bf);
+}
+
 int elf_get_file_type(RzBinFile *bf) {
 	return get_file_type(bf);
 }

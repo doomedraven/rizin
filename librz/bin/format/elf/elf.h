@@ -426,4 +426,7 @@ bool Elf_(rz_bin_elf_has_symbols)(RZ_NONNULL ELFOBJ *bin);
 // elf_relocs_addend.c
 void Elf_(rz_bin_elf_relocs_read_addends)(RZ_NONNULL ELFOBJ *bin);
 
+// elf_eh_frame.c
+RZ_OWN RzPVector /*<RzBinFunctionRange *>*/ *Elf_(rz_bin_elf_get_function_ranges)(RZ_NONNULL RzBinFile *bf);
+
 #endif

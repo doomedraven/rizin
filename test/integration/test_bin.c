@@ -351,6 +351,117 @@ bool test_rz_bin_p2v2p(void) {
 	mu_end;
 }
 
+bool test_rz_bin_elf_eh_frame_function_ranges(void) {
+	/* 1. ELF64 LE with .eh_frame: recovers 4 .text FDEs and skips .plt FDE (0x4003d0..0x400410) */
+	RzBin *bin = rz_bin_new();
+	RzIO *io = rz_io_new();
+	rz_io_bind(io, &bin->iob);
+
+	RzBinOptions opt = { 0 };
+	rz_bin_options_init(&opt, 0, UT64_MAX, 0, false);
+	RzBinFile *bf = rz_bin_open(bin, "bins/elf/analysis/hello-linux-x86_64", &opt);
+	mu_assert_notnull(bf, "open hello-linux-x86_64");
+	const RzPVector *franges = rz_bin_file_get_function_ranges(bf);
+	mu_assert_notnull(franges, "elf64 function ranges");
+	mu_assert_eq(rz_pvector_len(franges), 4, "4 .text FDEs (.plt FDE skipped)");
+	bool has_entry = false;
+	bool has_main = false;
+	bool has_plt = false;
+	void **it;
+	rz_pvector_foreach (franges, it) {
+		const RzBinFunctionRange *fr = *it;
+		if (fr->start == 0x400410 && fr->end == 0x40043a) {
+			has_entry = true;
+		} else if (fr->start == 0x4004fc && fr->end == 0x400511) {
+			has_main = true;
+		} else if (fr->start == 0x4003d0) {
+			has_plt = true;
+		}
+	}
+	mu_assert_true(has_entry, "elf64 entry FDE recovered");
+	mu_assert_true(has_main, "elf64 main FDE recovered");
+	mu_assert_false(has_plt, "elf64 .plt FDE skipped");
+	rz_bin_free(bin);
+	rz_io_free(io);
+
+	/* 2. Sectionless ELF64 (e_shnum=0): PT_GNU_EH_FRAME fallback recovers FDEs */
+	bin = rz_bin_new();
+	io = rz_io_new();
+	rz_io_bind(io, &bin->iob);
+	rz_bin_options_init(&opt, 0, UT64_MAX, 0, false);
+	bf = rz_bin_open(bin, "bins/elf/analysis/dynamic-poffset", &opt);
+	mu_assert_notnull(bf, "open sectionless dynamic-poffset");
+	franges = rz_bin_file_get_function_ranges(bf);
+	mu_assert_notnull(franges, "sectionless elf64 function ranges");
+	mu_assert_true(rz_pvector_len(franges) >= 4, "PT_GNU_EH_FRAME recovers >= 4 FDEs");
+	rz_pvector_foreach (franges, it) {
+		const RzBinFunctionRange *fr = *it;
+		mu_assert_true(fr->start < fr->end, "valid sectionless FDE bounds");
+	}
+	rz_bin_free(bin);
+	rz_io_free(io);
+
+	/* 3. ELF32 PIE with zPLR CIE (P=0x9b indirect pcrel sdata4) + base-address rebasing */
+	bin = rz_bin_new();
+	io = rz_io_new();
+	rz_io_bind(io, &bin->iob);
+	rz_bin_options_init(&opt, 0, 0, 0, false);
+	bf = rz_bin_open(bin, "bins/elf/redpill", &opt);
+	mu_assert_notnull(bf, "open elf32 redpill");
+	franges = rz_bin_file_get_function_ranges(bf);
+	mu_assert_notnull(franges, "elf32 zPLR function ranges");
+	size_t redpill_cnt = rz_pvector_len(franges);
+	mu_assert_true(redpill_cnt >= 15, "elf32 zPLR recovers FDEs");
+	const RzBinFunctionRange *first0 = rz_pvector_at(franges, 0);
+	ut64 orig_start = first0->start;
+	ut64 orig_end = first0->end;
+	bool redpill_has_plt = false;
+	rz_pvector_foreach (franges, it) {
+		const RzBinFunctionRange *fr = *it;
+		if (fr->start == 0xd70) {
+			redpill_has_plt = true;
+		}
+	}
+	mu_assert_false(redpill_has_plt, "elf32 .plt FDE skipped");
+	rz_bin_free(bin);
+	rz_io_free(io);
+
+	bin = rz_bin_new();
+	io = rz_io_new();
+	rz_io_bind(io, &bin->iob);
+	rz_bin_options_init(&opt, 0, 0x500000, 0, false);
+	bf = rz_bin_open(bin, "bins/elf/redpill", &opt);
+	mu_assert_notnull(bf, "open rebased elf32 redpill");
+	franges = rz_bin_file_get_function_ranges(bf);
+	mu_assert_notnull(franges, "rebased elf32 function ranges");
+	mu_assert_eq(rz_pvector_len(franges), redpill_cnt, "rebased elf32 FDE count preserved");
+	const RzBinFunctionRange *first_rebased = rz_pvector_at(franges, 0);
+	mu_assert_eq(first_rebased->start, orig_start + 0x500000, "rebased start shifted by baddr");
+	mu_assert_eq(first_rebased->end, orig_end + 0x500000, "rebased end shifted by baddr");
+	rz_bin_free(bin);
+	rz_io_free(io);
+
+	/* 4. Big-endian ELF64 .eh_frame (PowerPC64) */
+	bin = rz_bin_new();
+	io = rz_io_new();
+	rz_io_bind(io, &bin->iob);
+	rz_bin_options_init(&opt, 0, UT64_MAX, 0, false);
+	bf = rz_bin_open(bin, "bins/elf/ppc/emulateme-ppc64be", &opt);
+	mu_assert_notnull(bf, "open emulateme-ppc64be");
+	franges = rz_bin_file_get_function_ranges(bf);
+	mu_assert_notnull(franges, "ppc64be function ranges");
+	mu_assert_eq(rz_pvector_len(franges), 2, "ppc64be recovers 2 FDEs");
+	const RzBinFunctionRange *be0 = rz_pvector_at(franges, 0);
+	const RzBinFunctionRange *be1 = rz_pvector_at(franges, 1);
+	mu_assert_eq(be0->start, 0x100494, "ppc64be FDE 0 start");
+	mu_assert_eq(be0->end, 0x1005c4, "ppc64be FDE 0 end");
+	mu_assert_eq(be1->start, 0x1005c4, "ppc64be FDE 1 start");
+	mu_assert_eq(be1->end, 0x1006c8, "ppc64be FDE 1 end");
+	rz_bin_free(bin);
+	rz_io_free(io);
+	mu_end;
+}
+
 bool all_tests() {
 	mu_run_test(test_rz_bin);
 	mu_run_test(test_rz_bin_reloc_storage);
@@ -358,6 +469,7 @@ bool all_tests() {
 	mu_run_test(test_rz_bin_file_delete_all);
 	mu_run_test(test_rz_bin_sections_mapping);
 	mu_run_test(test_rz_bin_p2v2p);
+	mu_run_test(test_rz_bin_elf_eh_frame_function_ranges);
 	return tests_passed != tests_run;
 }
 

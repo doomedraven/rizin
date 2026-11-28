@@ -44,6 +44,7 @@ RzBinPlugin rz_bin_plugin_elf64 = {
 	.size = &elf64_size,
 	.libs = &elf64_libs,
 	.relocs = &elf64_relocs,
+	.function_ranges = &elf64_function_ranges,
 	.create = &elf64_create_elf,
 	.get_vaddr = &get_elf_vaddr64,
 	.file_type = &elf64_get_file_type,

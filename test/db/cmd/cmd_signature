@@ -362,7 +362,7 @@ aaa
 Fs bins/flirt/elf-x86/libcurl.a.pat
 EOF
 EXPECT=<<EOF
-Found 148 FLIRT signatures via bins/flirt/elf-x86/libcurl.a.pat
+Found 251 FLIRT signatures via bins/flirt/elf-x86/libcurl.a.pat
 EOF
 RUN
 
@@ -373,7 +373,7 @@ aaa
 Fs bins/flirt/elf-x86/libcurl.a.sig
 EOF
 EXPECT=<<EOF
-Found 148 FLIRT signatures via bins/flirt/elf-x86/libcurl.a.sig
+Found 250 FLIRT signatures via bins/flirt/elf-x86/libcurl.a.sig
 EOF
 RUN
 
@@ -403,12 +403,12 @@ FILE=bins/flirt/elf-x86/test.stripped
 CMDS=<<EOF
 aaa
 Fs bins/flirt/elf-x86/test.stripped.pat~silence
-af @ data.004011a5
-pdf @ data.004011a5
+af @ 0x004011a5
+pdf @ 0x004011a5
 EOF
 EXPECT=<<EOF
             ; DATA XREF from entry0 @ 0x40105f
-/ data.004011a5(int64_t arg1 @ rdi, int64_t arg2 @ rsi);
+/ fcn.004011a5(int32_t arg1 @ rdi, int64_t arg2 @ rsi);
 |           ; var int64_t var_78h @ stack - 0x78
 |           ; var int32_t var_6ch @ stack - 0x6c
 |           ; var int64_t var_68h @ stack - 0x68
@@ -424,19 +424,19 @@ EXPECT=<<EOF
 |           0x004011c3      mov   rax, qword [var_78h]
 |           0x004011c7      add   rax, 0x08
 |           0x004011cb      mov   rax, qword [rax]
-|           0x004011ce      mov   rdi, rax
+|           0x004011ce      mov   rdi, rax                             ; int64_t arg1
 |           0x004011d1      call  flirt.atoi
 |           0x004011d6      mov   edx, eax
 |           0x004011d8      lea   rax, qword [var_68h]
-|           0x004011dc      mov   ecx, edx
+|           0x004011dc      mov   ecx, edx                             ; int64_t arg4
 |           0x004011de      lea   rdx, qword str.Hello__d              ; segment.LOAD2
-|                                                                      ; 0x404000 ; "Hello %d\n"
-|           0x004011e5      mov   esi, 0x50                            ; 'P' ; 80
-|           0x004011ea      mov   rdi, rax
+|                                                                      ; 0x404000 ; "Hello %d\n" ; int64_t arg3
+|           0x004011e5      mov   esi, 0x50                            ; 'P' ; 80 ; int64_t arg2
+|           0x004011ea      mov   rdi, rax                             ; int64_t arg1
 |           0x004011ed      mov   eax, 0x00
 |           0x004011f2      call  flirt.snprintf
 |           0x004011f7      lea   rax, qword [var_68h]
-|           0x004011fb      mov   rdi, rax
+|           0x004011fb      mov   rdi, rax                             ; int64_t arg1
 |           0x004011fe      call  flirt.puts
 |           0x00401203      mov   eax, 0x00
 |           0x00401208      mov   rdx, qword [var_10h]
@@ -454,12 +454,12 @@ FILE=bins/flirt/elf-x86/test.stripped
 CMDS=<<EOF
 aaa
 Fs bins/flirt/elf-x86/test.stripped.sig~silence
-af @ data.004011a5
-pdf @ data.004011a5
+af @ 0x004011a5
+pdf @ 0x004011a5
 EOF
 EXPECT=<<EOF
             ; DATA XREF from entry0 @ 0x40105f
-/ data.004011a5(int64_t arg1 @ rdi, int64_t arg2 @ rsi);
+/ fcn.004011a5(int32_t arg1 @ rdi, int64_t arg2 @ rsi);
 |           ; var int64_t var_78h @ stack - 0x78
 |           ; var int32_t var_6ch @ stack - 0x6c
 |           ; var int64_t var_68h @ stack - 0x68
@@ -475,19 +475,19 @@ EXPECT=<<EOF
 |           0x004011c3      mov   rax, qword [var_78h]
 |           0x004011c7      add   rax, 0x08
 |           0x004011cb      mov   rax, qword [rax]
-|           0x004011ce      mov   rdi, rax
+|           0x004011ce      mov   rdi, rax                             ; int64_t arg1
 |           0x004011d1      call  flirt.atoi
 |           0x004011d6      mov   edx, eax
 |           0x004011d8      lea   rax, qword [var_68h]
-|           0x004011dc      mov   ecx, edx
+|           0x004011dc      mov   ecx, edx                             ; int64_t arg4
 |           0x004011de      lea   rdx, qword str.Hello__d              ; segment.LOAD2
-|                                                                      ; 0x404000 ; "Hello %d\n"
-|           0x004011e5      mov   esi, 0x50                            ; 'P' ; 80
-|           0x004011ea      mov   rdi, rax
+|                                                                      ; 0x404000 ; "Hello %d\n" ; int64_t arg3
+|           0x004011e5      mov   esi, 0x50                            ; 'P' ; 80 ; int64_t arg2
+|           0x004011ea      mov   rdi, rax                             ; int64_t arg1
 |           0x004011ed      mov   eax, 0x00
 |           0x004011f2      call  flirt.snprintf
 |           0x004011f7      lea   rax, qword [var_68h]
-|           0x004011fb      mov   rdi, rax
+|           0x004011fb      mov   rdi, rax                             ; int64_t arg1
 |           0x004011fe      call  flirt.puts
 |           0x00401203      mov   eax, 0x00
 |           0x00401208      mov   rdx, qword [var_10h]
@@ -532,10 +532,10 @@ aaa
 afl~flirt
 EOF
 EXPECT=<<EOF
-0x00409c70    5 208          flirt.printf
-0x0046fc50    4 208  -> 201  flirt.printf_3
+0x00409c70    5 201          flirt.printf
+0x0046fc50    4 208  -> 201  flirt.printf_1
 0x0046fe50    4 208  -> 197  flirt.printf_2
-0x0046ffb0    4 208          flirt.printf_1
+0x0046ffb0    4 208  -> 199  flirt.printf_3
 EOF
 RUN
 
@@ -549,10 +549,10 @@ afl~printf
 EOF
 EXPECT=<<EOF
 Applying elf/x86/64/match.sig signature file
-0x00409c70    5 208          flirt.printf
-0x0046fc50    4 208  -> 201  flirt.printf_3
+0x00409c70    5 201          flirt.printf
+0x0046fc50    4 208  -> 201  flirt.printf_1
 0x0046fe50    4 208  -> 197  flirt.printf_2
-0x0046ffb0    4 208          flirt.printf_1
+0x0046ffb0    4 208  -> 199  flirt.printf_3
 EOF
 RUN
 
@@ -565,15 +565,15 @@ afsbj ~{} @ 0x00409c70
 Ff @ 0x00409c70
 EOF
 EXPECT=<<EOF
-pattern f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074370f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c0488b3d274a0a004889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7442404300000004889442410e8842e0000488b54241864482b14252800000075084881c4d8000000c3e8b7e103000f1f8000000000
-mask ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000ffffffffffff00000000ffffffffffffffffffffffffffffff00ffffffffffffffffff00000000ffffffffffffff
-search f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074..0f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c048............4889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7..............4889442410e8........488b54241864482b14252800000075..4881c4d8000000c3e8........0f1f8000000000
+pattern f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074370f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c0488b3d274a0a004889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7442404300000004889442410e8842e0000488b54241864482b14252800000075084881c4d8000000c3e8b7e10300
+mask ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000ffffffffffff00000000ffffffffffffffffffffffffffffff00ffffffffffffffffff00000000
+search f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074..0f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c048............4889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7..............4889442410e8........488b54241864482b14252800000075..4881c4d8000000c3e8........
 {
-  "pattern": "f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074370f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c0488b3d274a0a004889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7442404300000004889442410e8842e0000488b54241864482b14252800000075084881c4d8000000c3e8b7e103000f1f8000000000",
-  "mask": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000ffffffffffff00000000ffffffffffffffffffffffffffffff00ffffffffffffffffff00000000ffffffffffffff",
-  "search": "f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074..0f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c048............4889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7..............4889442410e8........488b54241864482b14252800000075..4881c4d8000000c3e8........0f1f8000000000"
+  "pattern": "f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074370f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c0488b3d274a0a004889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7442404300000004889442410e8842e0000488b54241864482b14252800000075084881c4d8000000c3e8b7e10300",
+  "mask": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000ffffffffffff00000000ffffffffffffffffffffffffffffff00ffffffffffffffffff00000000",
+  "search": "f30f1efa4881ecd80000004989fa4889742428488954243048894c24384c894424404c894c244884c074..0f294424500f294c24600f295424700f299c24800000000f29a424900000000f29ac24a00000000f29b424b00000000f29bc24c000000064488b042528000000488944241831c048............4889e231c9488d8424e00000004c89d6c70424080000004889442408488d442420c7..............4889442410e8........488b54241864482b14252800000075..4881c4d8000000c3e8........"
 }
-F30F1EFA4881ECD80000004989FA4889742428488954243048894C24384C8944 0A CA1D 00D0 :0000 fcn.00409c70 ..0F294424500F294C24600F295424700F299C24800000000F29A424900000000F29AC24A00000000F29B424B00000000F29BC24C000000064488B042528000000488944241831C048............4889E231C9488D8424E00000004C89D6C70424080000004889442408488D442420C7..............4889442410E8........488B54241864482B14252800000075..4881C4D8000000C3E8........0F1F8000000000
+F30F1EFA4881ECD80000004989FA4889742428488954243048894C24384C8944 0A CA1D 00C9 :0000 fcn.00409c70 ..0F294424500F294C24600F295424700F299C24800000000F29A424900000000F29AC24A00000000F29B424B00000000F29BC24C000000064488B042528000000488944241831C048............4889E231C9488D8424E00000004C89D6C70424080000004889442408488D442420C7..............4889442410E8........488B54241864482B14252800000075..4881C4D8000000C3E8
 ---
 EOF
 RUN

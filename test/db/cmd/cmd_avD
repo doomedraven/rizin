@@ -1320,7 +1320,7 @@ EXPECT=<<EOF
 |           0x0004d8d9      mov   rbp, rsp
 |           0x0004d8dc      mov   rax, qword [rdi]                     ; arg1
 |           0x0004d8df      call  qword [rax+0x30]                     ; Virtual call: sym.int_class_dlang.Polygon.area / sym.int_class_dlang.Rectangle.area / sym.int_class_dlang.Triangle.area
-|           0x0004d8e3      mov   edi, eax                             ; int64_t arg1
+|           0x0004d8e3      mov   edi, eax                             ; int32_t arg1
 |           0x0004d8e5      call  sym._safe_void_std.stdio.writeln__int_.writeln_int
 |           0x0004d8ea      pop   rbp
 \           0x0004d8eb      ret
@@ -1331,7 +1331,7 @@ EXPECT=<<EOF
 |           ;-- rip:
 |           0x0004d8f0      mov   rax, qword [rdi]                     ; arg1
 |           0x0004d8f3      call  qword [rax+0x38]                     ; Virtual call: sym.int_class_dlang.Polygon.sides
-|           0x0004d8f7      mov   edi, eax                             ; int64_t arg1
+|           0x0004d8f7      mov   edi, eax                             ; int32_t arg1
 |           0x0004d8f9      call  sym._safe_void_std.stdio.writeln__int_.writeln_int
 |           0x0004d8fe      pop   rbp
 \           0x0004d8ff      ret
@@ -1493,7 +1493,7 @@ class_dlang_Polygon:
 |           0x0004d8d9      mov   rbp, rsp
 |           0x0004d8dc      mov   rax, qword [rdi]                     ; arg1
 |           0x0004d8df      call  qword [rax+0x30]                     ; Virtual call: sym.int_class_dlang.Polygon.area / sym.int_class_dlang.Rectangle.area / sym.int_class_dlang.Triangle.area
-|           0x0004d8e3      mov   edi, eax                             ; int64_t arg1
+|           0x0004d8e3      mov   edi, eax                             ; int32_t arg1
 |           0x0004d8e5      call  sym._safe_void_std.stdio.writeln__int_.writeln_int
 |           0x0004d8ea      pop   rbp
 \           0x0004d8eb      ret
