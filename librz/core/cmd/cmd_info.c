@@ -742,6 +742,11 @@ RZ_IPI RzCmdStatus rz_cmd_info_trycatch_handler(RzCore *core, int argc, const ch
 	return bool2status(rz_core_bin_trycatch_print(core, bf, state));
 }
 
+RZ_IPI RzCmdStatus rz_cmd_info_function_ranges_handler(RzCore *core, int argc, const char **argv, RzCmdStateOutput *state) {
+	GET_CHECK_CUR_BINFILE(core);
+	return bool2status(rz_core_bin_function_ranges_print(core, bf, state));
+}
+
 RZ_IPI RzCmdStatus rz_cmd_info_sourcelines_handler(RzCore *core, int argc, const char **argv, RzCmdStateOutput *state) {
 	return bool2status(print_source_info(core, PRINT_SOURCE_INFO_LINES_ALL, state));
 }

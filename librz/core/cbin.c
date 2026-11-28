@@ -452,6 +452,11 @@ RZ_API bool rz_core_bin_print(RzCore *core, RZ_NONNULL RzBinFile *bf, ut32 mask,
 			wrap_mode("trycatch", RZ_OUTPUT_MODE_TABLE, rz_core_bin_trycatch_print(core, bf, st));
 		}
 	}
+	if (mask & RZ_CORE_BIN_ACC_FUNCTION_RANGES) {
+		if (state->mode & (RZ_OUTPUT_MODE_TABLE | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_QUIET)) {
+			wrap_mode("function_ranges", RZ_OUTPUT_MODE_TABLE, rz_core_bin_function_ranges_print(core, bf, st));
+		}
+	}
 	if (mask & RZ_CORE_BIN_ACC_SECTIONS_MAPPING) {
 		if (state->mode & (RZ_OUTPUT_MODE_STANDARD | RZ_OUTPUT_MODE_TABLE)) {
 			wrap_mode("sections mapping", RZ_OUTPUT_MODE_TABLE, rz_core_bin_sections_mapping_print(core, bf, st));
@@ -5723,6 +5728,63 @@ RZ_API bool rz_core_bin_sections_mapping_print(RZ_NONNULL RzCore *core, RZ_NONNU
 		rz_strbuf_free(sb);
 	}
 	rz_vector_free(maps);
+
+	rz_cmd_state_output_array_end(state);
+	return true;
+}
+
+/**
+ * \brief Print binary function address ranges (e.g. PE32+ .pdata, ELF .eh_frame).
+ *
+ * \param core RzCore instance
+ * \param bf Binary file
+ * \param state Command output state (TABLE, JSON, or QUIET)
+ * \return true on success, false on invalid arguments
+ */
+RZ_API bool rz_core_bin_function_ranges_print(RZ_NONNULL RzCore *core, RZ_NONNULL RzBinFile *bf, RZ_NONNULL RzCmdStateOutput *state) {
+	rz_return_val_if_fail(core && bf && state, false);
+	if (!bf->o) {
+		return false;
+	}
+
+	rz_cmd_state_output_set_columnsf(state, "XXn", "start", "end", "size");
+	rz_cmd_state_output_array_start(state);
+
+	bool va = core->io->va;
+	const RzPVector /*<RzBinFunctionRange *>*/ *franges = rz_bin_file_get_function_ranges(bf);
+	void **iter;
+	rz_pvector_foreach (franges, iter) {
+		const RzBinFunctionRange *fr = *iter;
+		if (!fr || fr->start == UT64_MAX) {
+			continue;
+		}
+		ut64 start = va ? fr->start : rz_bin_object_v2p(bf->o, fr->start);
+		if (start == UT64_MAX) {
+			continue;
+		}
+		ut64 size = (fr->end != UT64_MAX && fr->end > fr->start) ? (fr->end - fr->start) : 0;
+		ut64 end = (size && !UT64_ADD_OVFCHK(start, size)) ? (start + size) : UT64_MAX;
+		switch (state->mode) {
+		case RZ_OUTPUT_MODE_QUIET:
+			rz_cons_printf(core->cons, "0x%08" PFMT64x " %" PFMT64u "\n", start, size);
+			break;
+		case RZ_OUTPUT_MODE_TABLE:
+			rz_table_add_rowf(state->d.t, "XXn", start, end, size);
+			break;
+		case RZ_OUTPUT_MODE_JSON:
+			pj_o(state->d.pj);
+			pj_kn(state->d.pj, "start", start);
+			if (end != UT64_MAX) {
+				pj_kn(state->d.pj, "end", end);
+			}
+			pj_kn(state->d.pj, "size", size);
+			pj_end(state->d.pj);
+			break;
+		default:
+			rz_warn_if_reached();
+			break;
+		}
+	}
 
 	rz_cmd_state_output_array_end(state);
 	return true;

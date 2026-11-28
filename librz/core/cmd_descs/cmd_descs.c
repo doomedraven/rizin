@@ -14049,6 +14049,14 @@ static const RzCmdDescHelp cmd_info_cur_export_help = {
 	.args = cmd_info_cur_export_args,
 };
 
+static const RzCmdDescArg cmd_info_function_ranges_args[] = {
+	{ 0 },
+};
+static const RzCmdDescHelp cmd_info_function_ranges_help = {
+	.summary = "List function ranges from binary metadata",
+	.args = cmd_info_function_ranges_args,
+};
+
 static const RzCmdDescArg cmd_info_fields_args[] = {
 	{ 0 },
 };
@@ -25244,6 +25252,10 @@ RZ_IPI void rzshell_cmddescs_init(RzCore *core) {
 	RzCmdDesc *cmd_info_cur_export_cd = rz_cmd_desc_argv_state_new(core->rcmd, iE_cd, "iE.", RZ_OUTPUT_MODE_TABLE | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_QUIET, rz_cmd_info_cur_export_handler, &cmd_info_cur_export_help);
 	rz_warn_if_fail(cmd_info_cur_export_cd);
 	rz_cmd_desc_set_default_mode(cmd_info_cur_export_cd, RZ_OUTPUT_MODE_TABLE);
+
+	RzCmdDesc *cmd_info_function_ranges_cd = rz_cmd_desc_argv_state_new(core->rcmd, i_cd, "iF", RZ_OUTPUT_MODE_TABLE | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_QUIET, rz_cmd_info_function_ranges_handler, &cmd_info_function_ranges_help);
+	rz_warn_if_fail(cmd_info_function_ranges_cd);
+	rz_cmd_desc_set_default_mode(cmd_info_function_ranges_cd, RZ_OUTPUT_MODE_TABLE);
 
 	RzCmdDesc *cmd_info_fields_cd = rz_cmd_desc_argv_state_new(core->rcmd, i_cd, "ih", RZ_OUTPUT_MODE_TABLE | RZ_OUTPUT_MODE_JSON | RZ_OUTPUT_MODE_QUIET, rz_cmd_info_fields_handler, &cmd_info_fields_help);
 	rz_warn_if_fail(cmd_info_fields_cd);
